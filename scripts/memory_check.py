@@ -9,6 +9,7 @@ import subprocess
 import logging
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from notifier import send_alert
 
@@ -20,6 +21,28 @@ logging.basicConfig(
 
 WARNING_THRESHOLD = int(os.environ.get("WARNING", "20"))
 CRITICAL_THRESHOLD = int(os.environ.get("CRITICAL", "10"))
+
+STATE_DIR = "/tmp"
+CHECK_NAME= "memory"
+
+def load_last_state(check_name: str) -> str:
+    """
+    Lee el último estado guardado.
+    Si no existe, asumimos OK.
+    """
+    try:
+        with open(f"{STATE_DIR}/{check_name}.state") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "OK"
+
+
+def save_state(check_name: str, state: str) -> None:
+    """
+    Guarda el estado actual para el siguiente run.
+    """
+    with open(f"{STATE_DIR}/{check_name}.state", "w") as f:
+        f.write(state)
 
 if WARNING_THRESHOLD <= CRITICAL_THRESHOLD:
     logging.error("WARNING debe ser mayor que critical (Son % disponible)")
@@ -65,30 +88,44 @@ available_percent = (available_mb / total_mb) * 100
 available_percent = round(available_percent, 1)
 
 if available_percent >= WARNING_THRESHOLD:
-    logging.info(
-        f"OK - Memoria disponible: {available_percent}%"
-        f"({available_percent}MB de {total_mb}%)"
-    )
-    sys.exit(0)
+    current_state= "OK"
     
 elif available_percent >= CRITICAL_THRESHOLD:
-    message = f"Memoria disponible: {available_percent}% ({available_mb}MB de {total_mb}MB)"
-    logging.warning(message)
-    send_alert(
-        title="⚠️ Advertencia de Memoria",
-        message=message,
-        level="WARNING"
-    )
-    sys.exit(1)
+    current_state= "WARNING"
     
 else:
-    message = f"Memoria disponible: {available_percent}% ({available_mb}MB de {total_mb}MB)"
-    logging.error(message)
+    current_state= "CRITICAL"
+    
+last_state= load_last_state(CHECK_NAME)
+
+logging.info(f"Estado anterior: {last_state}")
+logging.info(f"Estado actual: {current_state}")
+logging.info(f"Uso de memoria: {available_percent}%")
+
+should_alert = last_state != current_state and current_state != "OK"
+should_recovery = last_state != "OK" and current_state == "OK"
+
+if should_alert:
     send_alert(
-        title="🔥 CRÍTICO: Memoria Baja",
-        message=message,
-        level="CRITICAL"
+        title=f"{current_state}: Uso de memoria",
+        message=f"Memoria disponible : {available_percent}%",
+        level=current_state
     )
+
+if should_recovery:
+    send_alert(
+        title="RECOVERY: Disco OK",
+        message=f"Memoria disponible normalizado: {available_percent}%",
+        level="OK"
+    )
+    
+save_state(CHECK_NAME, current_state)
+
+if current_state == "OK":
+    sys.exit(0)
+elif current_state == "WARNING":
+    sys.exit(1)
+else:
     sys.exit(2)
     
 

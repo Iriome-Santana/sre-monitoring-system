@@ -4,12 +4,13 @@ Script de monitoreo de uso de disco.
 Autor: Iriome
 Fecha: 02/02/2026
 """
-
+    
 import subprocess
 import sys
 import logging
 import os
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from notifier import send_alert
 
@@ -23,6 +24,28 @@ logging.basicConfig(
 DISK_PATH = os.environ.get("DISK_PATH", "/")
 WARNING_THRESHOLD = os.environ.get("WARNING", "80")
 CRITICAL_THRESHOLD = os.environ.get("CRITICAL", "90")
+
+STATE_DIR = "/tmp"
+CHECK_NAME = "disk"
+
+def load_last_state(check_name: str) -> str:
+    """
+    Lee el último estado guardado.
+    Si no existe, asumimos OK.
+    """
+    try:
+        with open(f"{STATE_DIR}/{check_name}.state") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "OK"
+
+
+def save_state(check_name: str, state: str) -> None:
+    """
+    Guarda el estado actual para el siguiente run.
+    """
+    with open(f"{STATE_DIR}/{check_name}.state", "w") as f:
+        f.write(state)
 
 try:
     warning_threshold = int(WARNING_THRESHOLD)
@@ -72,27 +95,42 @@ except ValueError:
     sys.exit(2)
 
 if use_percent < warning_threshold:
-    logging.info(f"OK - Uso de disco: {use_percent}%")
-    sys.exit(0)
+    current_state = "OK"
 elif use_percent < critical_threshold:
-    message = f"Uso de disco en {DISK_PATH}: {use_percent}%"
-    logging.warning(f"WARNING - {message}")
-    
-    send_alert(
-        title= "ADVERTENCIA de Disco",
-        message= message,
-        level= "WARNING"
-    )
-    sys.exit(1)
-
+    current_state = "WARNING"
 else:
-    message = f"Uso de disco en {DISK_PATH}: {use_percent}%"
-    logging.error(f"CRITICAL - {message}")
+    current_state = "CRITICAL"
     
-    # Enviar alerta
+last_state = load_last_state(CHECK_NAME)
+
+logging.info(f"Estado anterior: {last_state}")
+logging.info(f"Estado actual: {current_state}")
+logging.info(f"Uso de disco: {use_percent}%")
+    
+should_alert = last_state != current_state and current_state != "OK"
+should_recovery = last_state != "OK" and current_state == "OK"
+
+if should_alert:
     send_alert(
-        title="CRÍTICO: Disco Lleno",
-        message=message,
-        level="CRITICAL"
+        title=f"{current_state}: Uso de disco",
+        message=f"Uso de disco en {DISK_PATH}: {use_percent}%",
+        level=current_state
     )
+
+if should_recovery:
+    send_alert(
+        title="RECOVERY: Disco OK",
+        message=f"Uso de disco normalizado: {use_percent}%",
+        level="OK"
+    )
+    
+save_state(CHECK_NAME, current_state)
+
+if current_state == "OK":
+    sys.exit(0)
+elif current_state == "WARNING":
+    sys.exit(1)
+else:
     sys.exit(2)
+
+

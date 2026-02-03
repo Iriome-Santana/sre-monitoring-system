@@ -10,6 +10,7 @@ import sys
 import logging
 import os
 import re
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from notifier import send_alert
 
@@ -21,6 +22,28 @@ logging.basicConfig(
 
 WARNING_THRESHOLD = int(os.environ.get("WARNING", "20"))
 CRITICAL_THRESHOLD = int(os.environ.get("CRITICAL", "10"))
+
+STATE_DIR= "/tmp"
+CHECK_NAME= "cpu"
+
+def load_last_state(check_name: str) -> str:
+    """
+    Lee el último estado guardado.
+    Si no existe, asumimos OK.
+    """
+    try:
+        with open(f"{STATE_DIR}/{check_name}.state") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "OK"
+
+
+def save_state(check_name: str, state: str) -> None:
+    """
+    Guarda el estado actual para el siguiente run.
+    """
+    with open(f"{STATE_DIR}/{check_name}.state", "w") as f:
+        f.write(state)
 
 if WARNING_THRESHOLD <= CRITICAL_THRESHOLD:
     logging.error("WARNING debe ser mayor que CRITICAL")
@@ -72,31 +95,42 @@ idle_percent = round(idle_percent, 1)
 usage_percent = round(100 - idle_percent, 1)
 
 if idle_percent >= WARNING_THRESHOLD:
-    logging.info(
-        f"OK - CPU idle: {idle_percent}% (uso: {usage_percent}%)"
-    )
-    sys.exit(0)
+    current_state= "OK"
     
 elif idle_percent >= CRITICAL_THRESHOLD:
-    message=f"WARNING - CPU idle: {idle_percent}% (uso: {usage_percent}"
-    logging.warning(message)
-    
-    send_alert(
-        title= "Advertencia de CPU",
-        message= message,
-        level= "WARNING"
-    )
-    sys.exit(1)
+    current_state= "WARNING"
     
 else:
-    message= f"CRITICAL - CPU idle: {idle_percent}% (uso: {usage_percent}%"
-    logging.error(message)
+    current_state= "CRITICAL"
     
-    send_alert(
-        title= "CRITICO uso de CPU",
-        message= message,
-        level= "CRITICAL"
-    )
-    sys.exit(2)
-    
+last_state= load_last_state(CHECK_NAME)
 
+logging.info(f"Estado anterior: {last_state}")
+logging.info(f"Estado actual: {current_state}")
+logging.info(f"CPU disponible: {idle_percent}")
+
+should_alert = last_state != current_state and current_state != "OK"
+should_recovery = last_state != "OK" and current_state == "OK"
+
+if should_alert:
+    send_alert(
+        title=f"{current_state}: Uso de CPU",
+        message=f"CPU disponible : {idle_percent}",
+        level=current_state
+    )
+
+if should_recovery:
+    send_alert(
+        title="RECOVERY: Disco OK",
+        message=f"CPU disponible normalizada: {idle_percent}",
+        level="OK"
+    )
+    
+save_state(CHECK_NAME, current_state)
+
+if current_state == "OK":
+    sys.exit(0)
+elif current_state == "WARNING":
+    sys.exit(1)
+else:
+    sys.exit(2)
