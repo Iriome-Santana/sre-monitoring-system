@@ -1,90 +1,143 @@
-# Architecture Overview
+# Arquitectura del Sistema
 
-Este proyecto implementa un sistema de monitoreo local
-basado en checks independientes ejecutados de forma periódica.
+## Diagrama de Flujo
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CRON SCHEDULER                            │
+│                  (Cada 5 minutos)                            │
+└────────────────┬────────────┬────────────┬──────────────────┘
+                 │            │            │
+                 ▼            ▼            ▼
+        ┌────────────┐ ┌────────────┐ ┌────────────┐
+        │disk_check  │ │memory_check│ │ cpu_check  │
+        │   .py      │ │   .py      │ │   .py      │
+        └─────┬──────┘ └─────┬──────┘ └─────┬──────┘
+              │              │              │
+              └──────────────┼──────────────┘
+                             ▼
+                    ┌────────────────┐
+                    │  notifier.py   │
+                    │  (send_alert)  │
+                    └────────┬───────┘
+                             │
+                    ┌────────▼────────┐
+                    │ Discord Webhook │
+                    │  (POST request) │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │  Discord Server │
+                    │ #alertas-sistema│
+                    └─────────────────┘
+```
 
-La arquitectura prioriza:
-- Simplicidad
-- Bajo acoplamiento
-- Fácil extensión
-- Claridad operativa
+## Componentes
 
-## Components
+### 1. Scripts de Monitoreo
 
-### 1. Resource Checks
-Cada recurso del sistema se monitorea mediante un script independiente:
+**disk_check.py**
+- Lee uso de disco con `df -h`
+- Compara contra thresholds
+- Detecta cambios de estado
+- Alerta si necesario
 
-- cpu_check.py
-- memory_check.py
-- disk_check.py
+**memory_check.py**
+- Lee memoria con `free -m`
+- Calcula % disponible
+- State management
+- Alertas de memoria baja
 
-Cada check sigue el mismo patrón:
-1. Recolección de métricas del sistema
-2. Evaluación contra umbrales
-3. Determinación del estado (OK / WARNING / CRITICAL)
-4. Comparación con el estado anterior
-5. Decisión de alertar o no
-6. Persistencia del nuevo estado
+**cpu_check.py**
+- Lee CPU con `top -bn1`
+- Extrae % idle con regex
+- Detecta sobrecarga
+- Alerta en cambios
 
-## Execution Flow
+### 2. Sistema de Notificaciones
 
-[CRON]
-   ↓
-check.py
-   ↓
-Recolectar métricas (top / free / df)
-   ↓
-Calcular porcentaje relevante
-   ↓
-Evaluar umbrales
-   ↓
-Leer último estado (/tmp/*.state)
-   ↓
-Comparar estados
-   ↓
-¿Cambio de estado?
-   ├─ Sí → Enviar alerta o recovery
-   └─ No → No hacer nada
-   ↓
-Guardar estado actual
-   ↓
-Exit code estándar (0 / 1 / 2)
+**notifier.py**
+- Clase `Notifier` con métodos:
+  - `send_discord()` - Envía embed a Discord
+  - `send_alert()` - Wrapper público
+- Función helper `send_alert()` para uso rápido
+- Colores según severidad (azul, amarillo, rojo)
+- Timestamps UTC
 
-## State Management
+### 3. State Management
 
-El sistema utiliza archivos de estado locales
-para persistir el último estado de cada check.
+Almacena último estado en `/tmp/<check>.state`:
+```
+/tmp/
+├── disk.state     → "OK" | "WARNING" | "CRITICAL"
+├── memory.state   → "OK" | "WARNING" | "CRITICAL"
+└── cpu.state      → "OK" | "WARNING" | "CRITICAL"
+```
 
-Ubicación:
-/tmp/<check_name>.state
+**Lógica de alertas:**
+- Alerta: `last_state != current_state AND current_state != "OK"`
+- Recovery: `last_state != "OK" AND current_state == "OK"`
 
-Estados posibles:
-- OK
-- WARNING
-- CRITICAL
+### 4. Logging
 
-Este enfoque permite:
-- Evitar alertas repetidas
-- Detectar recuperaciones
-- Mantener el sistema stateless en memoria
+Todos los scripts logean a:
+- `~/sre/logs/disk_check.log`
+- `~/sre/logs/memory_check.log`
+- `~/sre/logs/cpu_check.log`
 
-## Alerting System
+Formato: `YYYY-MM-DD HH:MM:SS - LEVEL - MESSAGE`
 
-Las alertas se gestionan mediante el módulo notifier.
+## Decisiones de Diseño
 
-Características:
-- Abstracción del canal de notificación
-- Soporte actual para Discord
-- Diseño extensible para futuros canales
+### ¿Por qué Python + Bash?
 
-El sistema envía alertas únicamente cuando:
-- El estado cambia
-- El estado no es OK
+- **Python**: Para lógica compleja (parsing, HTTP, regex)
+- **Bash**: Para glue code y scripts de utilidad
 
-## Design Principles
+### ¿Por qué state files en /tmp?
 
-- Fail fast: errores críticos finalizan la ejecución
-- Single responsibility: un recurso por check
-- Configuración externa al código
-- Evitar dependencias pesadas
-- Observabilidad sobre complejidad
+- Rápido (en memoria)
+- No requiere DB
+- Auto-limpieza en reboot (reset limpio)
+
+### ¿Por qué Discord?
+
+- Gratis
+- Webhooks simples (un POST)
+- Notificaciones móviles incluidas
+- Fácil de reemplazar con Slack/PagerDuty después
+
+### ¿Por qué cron en lugar de systemd timers?
+
+- Más simple para empezar
+- Familiar para la mayoría
+- Funciona en cualquier Linux
+
+**Mejora futura:** Migrar a systemd timers para mejor logging y control.
+
+## Flujo de una Alerta
+```
+1. Cron ejecuta disk_check.py
+2. Script lee uso actual: 85%
+3. Lee last_state: "OK"
+4. Determina current_state: "WARNING" (85% > 80%)
+5. Detecta cambio: "OK" → "WARNING"
+6. Llama send_alert(title, message, level="WARNING")
+7. notifier.py construye embed JSON
+8. POST a Discord webhook
+9. Discord muestra alerta amarilla ⚠️
+10. Guarda state: "WARNING" en /tmp/disk.state
+11. Exit code 1 (WARNING)
+```
+
+## Escalabilidad
+
+### Para 1 servidor: ✅ Perfecto así
+### Para 10 servidores: 
+- Centralizar logs en ELK o Loki
+- Dashboard con Grafana
+
+### Para 100+ servidores:
+- Prometheus + Grafana
+- Alertmanager para routing
+- PagerDuty para escalamiento
