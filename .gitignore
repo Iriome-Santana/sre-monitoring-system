@@ -6,3 +6,6 @@ logs/
 *.tmp
 *.swp
 *~
+
+*.env
+config.env
