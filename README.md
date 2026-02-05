@@ -32,6 +32,46 @@ Este proyecto busca:
 - Reporte diario agregado
 - Limpieza automática de logs antiguos
 
+## 🏗️ Arquitectura del Código
+
+### Patrón de Diseño
+
+Este proyecto usa el patrón **Template Method** con una clase base `BaseCheck`:
+```python
+from base_check import BaseCheck
+
+check = BaseCheck("disk")
+check.validate_thresholds(80, 90)
+# ... tu lógica específica
+exit_code = check.handle_state_change(state, "Disco", "85%")
+```
+
+**Ventajas:**
+- DRY (Don't Repeat Yourself)
+- Fácil de extender (añadir nuevos checks)
+- Lógica común centralizada
+- Cada check es independiente
+
+### Añadir un Nuevo Check
+
+Para crear `network_check.py` (por ejemplo):
+
+1. Importar `BaseCheck`
+2. Implementar lógica específica
+3. Usar `handle_state_change()` para gestionar estado
+4. Listo
+```python
+from base_check import BaseCheck
+import subprocess
+
+check = BaseCheck("network")
+# Tu lógica aquí
+result = subprocess.run(["ping", "-c", "1", "8.8.8.8"], ...)
+# Determinar estado
+exit_code = check.handle_state_change(state, "Latencia", "50ms")
+sys.exit(exit_code)
+```
+
 ## Architecture
 
 Cada check funciona de manera independiente:
