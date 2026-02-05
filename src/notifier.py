@@ -35,6 +35,7 @@ class Notifier:
         """
         # Si no está habilitado o no hay webhook, no hacer nada
         if not self.enabled or not self.discord_webhook:
+            print("WARNING: DISCORD_WEBHOOK no definido, no se enviará alerta")
             return False
         
         # Colores según severidad (en hexadecimal)
