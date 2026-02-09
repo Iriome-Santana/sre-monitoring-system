@@ -6,8 +6,8 @@
 ![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)
 
 Sistema de monitoreo local desarrollado en Python para supervisar
-uso de CPU, memoria RAM y disco, con alertas automáticas y
-gestión de estado para evitar alertas repetidas.
+uso de CPU, memoria RAM y disco, con alertas automáticas,
+gestión de estado para evitar alertas repetidas,tests automatizados con Github Actions y métricas conectadas a Prometheus y con visualización en Grafa.
 
 Proyecto orientado a prácticas reales de Site Reliability Engineering:
 observabilidad, alerting, automatización y respuesta a incidentes.
@@ -47,6 +47,8 @@ Este proyecto busca:
 - Scripts de testing manual
 - Reporte diario agregado
 - Limpieza automática de logs antiguos
+- Tests automatizados con Pytest y Github Actions
+- Métricas con Prometheus
 
 ## 📊 Visualización con Grafana
 
@@ -209,12 +211,11 @@ Si tuviera que llevar esto a producción MAÑANA con tiempo limitado:
 
 **Nice-to-have (1 semana):**
 4. Runbooks documentados
-5. Tests automatizados
 
 **Future (1 mes+):**
-6. Multi-server support
-7. Dashboard web
-8. Integración con PagerDuty
+5. Multi-server support
+6. Dashboard web
+7. Integración con PagerDuty
 
 ### Por Qué Este Orden:
 
