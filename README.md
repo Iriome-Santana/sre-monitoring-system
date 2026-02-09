@@ -7,6 +7,17 @@ gestión de estado para evitar alertas repetidas.
 Proyecto orientado a prácticas reales de Site Reliability Engineering:
 observabilidad, alerting, automatización y respuesta a incidentes.
 
+
+## Table of Contents
+- Problem Statement
+- Features
+- Observability Stack
+- Quick Start
+- Architecture
+- Production Readiness
+- Installation
+- Configuration
+
 ## Problem Statement
 
 En muchos sistemas pequeños o personales no existe monitoreo básico.
@@ -85,10 +96,6 @@ docker-compose down
 pkill -f metrics_exporter.py
 ```
 ```
-
-**Paso 2.3: Guardar**
-```
-Ctrl+O → Enter → Ctrl+X
 
 ## 🏗️ Arquitectura del Código
 
