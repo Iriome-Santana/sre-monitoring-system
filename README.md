@@ -1,5 +1,10 @@
 # SRE Monitoring Suite (Python)
 
+![Tests](https://github.com/Iriome-Santana/sre-monitoring-suite/actions/workflows/tests.yml/badge.svg)
+![Python Version](https://img.shields.io/badge/python-3.12-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)
+
 Sistema de monitoreo local desarrollado en Python para supervisar
 uso de CPU, memoria RAM y disco, con alertas automáticas y
 gestión de estado para evitar alertas repetidas.
