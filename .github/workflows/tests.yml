@@ -1,0 +1,44 @@
+
+name: Tests
+
+# Cuándo ejecutar este workflow
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Trabajos a ejecutar
+jobs:
+  test:
+    # Sistema operativo donde correr
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Paso 1: Descargar el código
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    # Paso 2: Configurar Python
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    # Paso 3: Instalar dependencias
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        pip install requests
+    
+    # Paso 4: Ejecutar tests con coverage
+    - name: Run tests
+      run: |
+        pytest tests/ --cov=src --cov-report=term-missing --cov-report=xml -v
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
