@@ -100,7 +100,7 @@ from base_check import BaseCheck
 
 check = BaseCheck("disk")
 check.validate_thresholds(80, 90)
-# ... tu lógica específica
+# ... lógica específica
 exit_code = check.handle_state_change(state, "Disco", "85%")
 ```
 
@@ -123,7 +123,7 @@ from base_check import BaseCheck
 import subprocess
 
 check = BaseCheck("network")
-# Tu lógica aquí
+# lógica aquí
 result = subprocess.run(["ping", "-c", "1", "8.8.8.8"], ...)
 # Determinar estado
 exit_code = check.handle_state_change(state, "Latencia", "50ms")
@@ -162,6 +162,7 @@ Este proyecto es educativo. Aquí está lo que cambiaría para producción real:
 2. **Exit codes** - Siguen estándares de monitoreo
 3. **Logging estructurado** - Parseable, con timestamps
 4. **Separación de concerns** - Fácil mantener
+5. **Métricas Históricas** - Métricas con dashboard visuales
 
 ### ⚠️ Lo que falta para producción:
 
@@ -180,12 +181,7 @@ Este proyecto es educativo. Aquí está lo que cambiaría para producción real:
    - **Solución:** Heartbeat a servicio externo cada 10 min
    - **Trade-off:** Complejidad adicional
 
-4. **Métricas Históricas**
-   - **Problema:** Solo sé el estado actual, no tendencias
-   - **Solución:** Prometheus + Grafana
-   - **Trade-off:** Simple pero limitado vs Complejo pero poderoso
-
-5. **Escalamiento**
+4. **Escalamiento**
    - **Problema:** Solo monitorea 1 servidor
    - **Solución:** Agent en cada servidor + collector central
    - **Trade-off:** Funciona para aprender vs No escala
@@ -200,21 +196,19 @@ Si tuviera que llevar esto a producción MAÑANA con tiempo limitado:
 3. Deadman's switch (cron job cada 10 min que hace ping a healthchecks.io)
 
 **Nice-to-have (1 semana):**
-4. Prometheus integration
-5. Runbooks documentados
-6. Tests automatizados
+4. Runbooks documentados
+5. Tests automatizados
 
 **Future (1 mes+):**
-7. Multi-server support
-8. Dashboard web
-9. Integración con PagerDuty
+6. Multi-server support
+7. Dashboard web
+8. Integración con PagerDuty
 
 ### Por Qué Este Orden:
 
 - **HA primero** - Sin el monitor, estás ciego
 - **Secrets segundo** - Vulnerabilidad de seguridad obvia
 - **Deadman tercero** - "¿Quién vigila al vigilante?"
-- **Prometheus cuarto** - Nice to have pero no crítico día 1
 
 **Esta priorización NO puede hacerla una IA** - requiere entender:
 - Riesgos de negocio
@@ -226,7 +220,7 @@ Si tuviera que llevar esto a producción MAÑANA con tiempo limitado:
 ## Installation
 
 ```bash
-git clone https://github.com/tuusuario/sre-monitoring-suite.git
+git clone https://github.com/Iriome-Santana/sre-monitoring-suite.git
 cd sre-monitoring-suite
 python3 -m venv venv
 source venv/bin/activate
@@ -247,6 +241,8 @@ Las siguientes variables de entorno controlan el comportamiento:
 - DISCORD_WEBHOOK: webhook de Discord
 - DISK_PATH: path a monitorear (por defecto /)
 - NOTIFICATIONS_ENABLED: true/false
+- METRICS_PORT = Puerto de las métricas
+- SCRAPE_INTERVAL = Intervalo de tiempo en segundos para escrapear métricas
 
 ## Run manually
 
