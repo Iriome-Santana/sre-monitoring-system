@@ -180,22 +180,18 @@ Este proyecto es educativo. Aquí está lo que cambiaría para producción real:
 
 ### ⚠️ Lo que falta para producción:
 
-1. **High Availability**
-   - **Problema:** Si este script muere, no hay alertas
-   - **Solución:** Systemd service con auto-restart
-   - **Trade-off:** Más complejidad vs más confiabilidad
 
-2. **Secrets Management**
+1. **Secrets Management**
    - **Problema:** Webhook en archivo plano
    - **Solución:** HashiCorp Vault o AWS Secrets Manager
    - **Trade-off:** Gratis pero inseguro vs Seguro pero cuesta tiempo/$$
 
-3. **Monitoring del Monitoring**
+2. **Monitoring del Monitoring**
    - **Problema:** ¿Quién monitorea el monitor? (Deadman's switch)
    - **Solución:** Heartbeat a servicio externo cada 10 min
    - **Trade-off:** Complejidad adicional
 
-4. **Escalamiento**
+3. **Escalamiento**
    - **Problema:** Solo monitorea 1 servidor
    - **Solución:** Agent en cada servidor + collector central
    - **Trade-off:** Funciona para aprender vs No escala
@@ -205,23 +201,21 @@ Este proyecto es educativo. Aquí está lo que cambiaría para producción real:
 Si tuviera que llevar esto a producción MAÑANA con tiempo limitado:
 
 **Must-have (1-2 días):**
-1. Systemd service (HA)
-2. Secrets en variables de entorno (no en archivo)
-3. Deadman's switch (cron job cada 10 min que hace ping a healthchecks.io)
+1. Secrets en variables de entorno (no en archivo)
+2. Deadman's switch (cron job cada 10 min que hace ping a healthchecks.io)
 
 **Nice-to-have (1 semana):**
-4. Runbooks documentados
+3. Runbooks documentados
 
 **Future (1 mes+):**
-5. Multi-server support
-6. Dashboard web
-7. Integración con PagerDuty
+4. Multi-server support
+5. Dashboard web
+6. Integración con PagerDuty
 
 ### Por Qué Este Orden:
 
-- **HA primero** - Sin el monitor, estás ciego
-- **Secrets segundo** - Vulnerabilidad de seguridad obvia
-- **Deadman tercero** - "¿Quién vigila al vigilante?"
+- **Secrets primero** - Vulnerabilidad de seguridad obvia
+- **Deadman segundo** - "¿Quién vigila al vigilante?"
 
 **Esta priorización NO puede hacerla una IA** - requiere entender:
 - Riesgos de negocio
